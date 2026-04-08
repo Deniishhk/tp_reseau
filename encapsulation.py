@@ -28,6 +28,7 @@ class Application(Osienc):
         return self.couche.processus(message)
 
 class Presentation(Osienc):
+    encode = None
     def processus(self,donne):
         """
         Dans la couche presentation recuperer les donnees de la couche app grace au return de la couche app
@@ -35,10 +36,11 @@ class Presentation(Osienc):
         :param donne:
         :return:
         """
-        encode = base64.b64encode(donne).decode()
-        return self.couche.processus(encode)
+        Presentation.encode = base64.b64encode(donne).decode()
+        return self.couche.processus(Presentation.encode)
 
 class SessionCouche(Osienc):
+    session_et =[]
     def processus(self,donne):
         """
          Dans la couche session recuperer les donnees de la couche presentation grace au return de la couche app
@@ -46,14 +48,16 @@ class SessionCouche(Osienc):
 
                 """
         id_session = "denisnsa"
-        ses =f"[{id_session} | \n {donne}]"
-        return self.couche.processus(ses)
+        SessionCouche.session_et.append(id_session)
+        SessionCouche.session_et.append(donne)
+        return self.couche.processus(SessionCouche.session_et)
 
 class Transport(Osienc):
     """
      Dans la couche presentation recuperer les donnees de la couche session grace au return de la couche app
     et ajoute les ports
             """
+    segment = {}
     def __init__(self,port_dst,couche=None):
         super().__init__(couche)
         self.port_dst = port_dst
@@ -61,14 +65,16 @@ class Transport(Osienc):
     def processus(self,donne):
         port_src = random.randint(49152,65535)
         port =f'[{port_src} - {self.port_dst}]'
-        proto =f'[{port} | \n {donne}]'
-        return self.couche.processus(proto)
+        Transport.segment["header"] = port
+        Transport.segment["body"] = donne
+        return self.couche.processus(Transport.segment)
 
 class Reseau(Osienc):
     """
     Dans la couche presentation recuperer les donnees de la couche transport grace au return de la couche app
     et qjoute les ip
             """
+    paquet = {}
     def __init__(self,ip_src,ip_dst,couche=None):
         super().__init__(self,couche)
         self.ip_src = ip_src
@@ -76,14 +82,16 @@ class Reseau(Osienc):
 
     def processus(self,donne):
         tete =f'[{self.ip_src} - {self.ip_dst}]'
-        paquet = f'[{tete} |\n {donne}]'
-        return self.couche.processus(paquet)
+        Reseau.paquet["header"] = tete
+        Reseau.paquet["body"] = donne
+        return self.couche.processus(Reseau.paquet)
 
 class Liaison(Osienc):
     """
             Dans la couche presentation recuperer les donnees de la couche reseau grace au return de la couche app
             et encode les message en base64
             """
+    Trames = {}
     def __init__(self,mac_src,mac_dst,couche=None):
         super().__init__(couche)
         self.mac_dst = mac_dst
@@ -92,14 +100,17 @@ class Liaison(Osienc):
     def processus(self,donne):
         en_tete =f'[{self.mac_src} - {self.mac_dst}]'
         pied ="[CRC_OK]"
-        trames = f"| {en_tete} | \n{donne} |\n {pied} |"
-        return self.couche.processus(trames)
+        Liaison.Trames["header"] = en_tete
+        Liaison.Trames["body"] = donne
+        Liaison.Trames["pied"] = pied
+        return self.couche.processus(Liaison.Trames)
 
 class Physique(Osienc):
     """
     La classe physique herrite des methodes de la classe mere Osienc
     on utilise le parametre donne pour recuperer les trames et l'en encode en binaire
     """
+    bite = None
     def processus(self,donne):
         bite = ''.join(format(ord(data), '08b') for data in donne)
         return bite
